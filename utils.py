@@ -5,6 +5,7 @@ import torch
 from pathlib import Path 
 import matplotlib.pyplot as plt
 import torchvision
+from PIL import Image
 from torch.utils.tensorboard.writer import SummaryWriter
 
 def save_model(model: torch.nn.Module, 
@@ -58,14 +59,14 @@ def pred_and_plot_image(
     """
 
     # 1. Load in image and convert the tensor values to float32
-    target_image = torchvision.io.read_image(str(image_path)).type(torch.float32)
+    img_list = Image.open(image_path)
 
     # 2. Divide the image pixel values by 255 to get them between [0, 1]
-    target_image = target_image / 255.0
+    # target_image = target_image / 255.0
 
     # 3. Transform if necessary
     if transform:
-        target_image = transform(target_image)
+        target_image = transform(img_list)
 
     # 4. Make sure the model is on the target device
     model.to(device)
