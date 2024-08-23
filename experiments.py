@@ -3,14 +3,13 @@ import utils
 import model_builder as mb
 import engine
 
-# 1. set seed
-utils.set_seeds(seed=42)
-
-# 2. keep track of experiment numbers 
-experiment_number = 0 
-
 # 3. loop through each dataloader 
 def run_experiment(train_dataloaders: dict, test_dataloader: torch.utils.data.DataLoader,  num_epochs: int, models: list[str], class_names: list[str], device: torch.device = None):
+    # 1. set seed
+    utils.set_seeds(seed=42)
+
+    # 2. keep track of experiment numbers 
+    experiment_number = 0 
     for dataloader_name, train_dataloader in train_dataloaders.items():
     # 4. loop through each number of epochs 
         for epochs in num_epochs:
@@ -37,6 +36,6 @@ def run_experiment(train_dataloaders: dict, test_dataloader: torch.utils.data.Da
                 engine.train(model=model, train_dataloader=train_dataloader, test_dataloader=test_dataloader, optimizer=optimizer, loss_fn=loss_fn, epochs=epochs, device=device, writer=utils.create_writer(experiment_name=dataloader_name, model_name=model_name, extra=f"{epochs}_epochs"))
 
                 # 10. save the model to file
-                save_filepath = f"07_{model_name}_{dataloader_name}_{epochs}_epochs.pt"
+                save_filepath = f"{model_name}_{dataloader_name}_{epochs}_epochs.pt"
                 utils.save_model(model=model, target_dir="models", model_name=save_filepath)
                 print("-"*50+"\n")

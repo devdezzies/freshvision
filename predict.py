@@ -19,8 +19,8 @@ image_transform = transforms.Compose([
                                  std=[0.229, 0.224, 0.225]),
 ])
 # TODO: setup directories 
-train_dir = "data/pizza_sushi_steak/train"
-test_dir = "data/pizza_sushi_steak/test"
+train_dir = ""
+test_dir = ""
 
 _, _, class_names = data_setup.create_dataloaders(train_dir=train_dir, test_dir=test_dir, transform=image_transform, batch_size=32)
 

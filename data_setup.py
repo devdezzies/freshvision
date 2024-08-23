@@ -2,65 +2,86 @@
 contains functionality for creating pytorch dataloaders for image classification data
 """
 import os 
-
+import torch
 from torchvision import datasets, transforms 
 from torch.utils.data import DataLoader 
 from pathlib import Path 
+import pathlib
 import requests
 import zipfile
+from typing import Tuple, Dict, List
+from torch.utils.data import Dataset
+from PIL import Image
 
 NUM_WORKERS = os.cpu_count()
 
-def download_data(source: str, 
-                  destination: str,
-                  remove_source: bool = True) -> Path:
-    """Downloads a zipped dataset from source and unzips to destination.
-
-    Args:
-        source (str): A link to a zipped file containing data.
-        destination (str): A target directory to unzip data to.
-        remove_source (bool): Whether to remove the source after downloading and extracting.
-    
-    Returns:
-        pathlib.Path to downloaded data.
-    
-    Example usage:
-        download_data(source="https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip",
-                      destination="pizza_steak_sushi")
+# create custom dataset
+def find_classes(directory: str) -> Tuple[list[str], Dict[str, int]]:
     """
-    # Setup path to data folder
-    data_path = Path("data/")
-    image_path = data_path / destination
+    Finds the class folder names in a target directory 
+    """
+    # 1. get the class names by scanning the target directory 
+    classes = sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
 
-    # If the image folder doesn't exist, download it and prepare it... 
-    if image_path.is_dir():
-        print(f"[INFO] {image_path} directory exists, skipping download.")
-    else:
-        print(f"[INFO] Did not find {image_path} directory, creating one...")
-        image_path.mkdir(parents=True, exist_ok=True)
-        
-        # Download pizza, steak, sushi data
-        target_file = Path(source).name
-        with open(data_path / target_file, "wb") as f:
-            request = requests.get(source)
-            print(f"[INFO] Downloading {target_file} from {source}...")
-            f.write(request.content)
-
-        # Unzip pizza, steak, sushi data
-        with zipfile.ZipFile(data_path / target_file, "r") as zip_ref:
-            print(f"[INFO] Unzipping {target_file} data...") 
-            zip_ref.extractall(image_path)
-
-        # Remove .zip file
-        if remove_source:
-            os.remove(data_path / target_file)
+    # 2. raise an error is class names couldn't be found 
+    if not classes:
+        raise FileNotFoundError(f"couldn't find any classes in {directory}")
     
-    return image_path
+    # 3. create a dictionary of index labels 
+    class_to_idx = {class_name: i for i, class_name in enumerate(classes)}
+    return classes, class_to_idx
+
+# 1. subclass torch.utils.data.Dataset 
+class ImageFolderCustom(Dataset):
+    # 2. initialize the constructor
+    def __init__(self, targ_dir: str, heads: list[str], transform=None, is_training: bool = True):
+        # 3. create several attributes 
+        # get all the image paths
+        self.training = []
+        self.testing = []
+        for tag in heads: 
+            self.img_list = list(Path(targ_dir / tag).glob("*.jpg"))
+            self.train_length = int(len(self.img_list) * 0.8)
+            self.training.extend(self.img_list[:self.train_length])
+            self.testing.extend(self.img_list[self.train_length:])
+
+        if is_training: 
+            self.paths = self.training
+        else: 
+            self.paths = self.testing
+        # setup transforms
+        self.transform = transform
+        # create classes and class_to_idx 
+        self.classes, self.class_to_idx = find_classes(targ_dir)
+
+    # 4. create a function to load images 
+    def load_image(self, index: int) -> Image.Image: 
+        "opens an image via a path and returns it"
+        image_path = self.paths[index]
+        return Image.open(image_path)
+    
+    # 5. overwrite __len__()
+    def __len__(self) -> int: 
+        return len(self.paths)
+    
+    # 6. overwrite __getitem__() to return a particular sample
+    def __getitem__(self, index: int) -> Tuple[torch.Tensor, int]:
+        "returns one sample of data, data and the label (X, y)"
+        img = self.load_image(index)
+        class_name = self.paths[index].parent.name # expects path in format: data_folder/class_name/image.jpg
+        class_idx = self.class_to_idx[class_name]
+
+        # transform if necessary 
+        if self.transform:
+            return self.transform(img), class_idx
+        else: 
+            return img, class_idx
 
 def create_dataloaders(
-    train_dir: str, 
-    test_dir: str, 
-    transform: transforms.Compose, 
+    image_dir: str,  
+    heads: list[str],
+    train_transform: transforms.Compose, 
+    test_transform: transforms.Compose,
     batch_size: int, 
     num_workers: int=NUM_WORKERS
 ):
@@ -90,8 +111,9 @@ def create_dataloaders(
     """
 
     # use ImageFolder to create datasets 
-    train_data = datasets.ImageFolder(train_dir, transform=transform)
-    test_data = datasets.ImageFolder(test_dir, transform=transform)
+    train_data = ImageFolderCustom(targ_dir=image_dir, heads=heads, transform=train_transform, is_training=True)
+
+    test_data = ImageFolderCustom(targ_dir=image_dir, heads=heads, transform=test_transform, is_training=False)
 
     # get class names 
     class_names = train_data.classes 
