@@ -4,6 +4,7 @@
 
 FreshVision is a machine learning model to classify freshness for fruits and vegetables. This model is built using EfficientNet. EfficientNet is an image classification model family thas has been trained on more than a million images from the ImageNet database.
 
+### [Try this model (freshvision)](https://huggingface.co/spaces/leafora/freshvision)
 ## Models library 
 * EfficientNetB0 [docs](https://pytorch.org/vision/main/models/generated/torchvision.models.efficientnet_b0.html)
 * EfficientNetB2 [docs](https://pytorch.org/vision/main/models/generated/torchvision.models.efficientnet_b2.html#torchvision.models.efficientnet_b2)
